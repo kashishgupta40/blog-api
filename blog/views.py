@@ -14,14 +14,14 @@ from .serializers import (
     CommentSerializer,
     RegisterSerializer,
     UserSerializer,
-    LoginSerializer,  
+    LoginSerializer,
 )
 from .permissions import IsOwnerOrReadOnly
 
 
 class RegisterView(APIView):
     permission_classes = []
-    serializer_class = RegisterSerializer 
+    serializer_class = RegisterSerializer
 
     @swagger_auto_schema(request_body=RegisterSerializer, responses={201: UserSerializer})
     def post(self, request):
@@ -49,14 +49,17 @@ class LoginView(ObtainAuthToken):
 
 
 class BlogViewSet(viewsets.ModelViewSet):
-    queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
     def get_queryset(self):
+        """
+        Fetch all blogs with annotated like and comment counts
+        and prefetch related objects for efficiency.
+        """
         return Blog.objects.select_related('author').annotate(
-            likes_count=Count('likes'),
-            comments_count=Count('comments')
+            likes_count=Count('likes', distinct=True),
+            comments_count=Count('comments', distinct=True)
         ).order_by('-created_at')
 
     def perform_create(self, serializer):
@@ -73,12 +76,10 @@ class BlogViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def unlike(self, request, pk=None):
         blog = self.get_object()
-        try:
-            like = Like.objects.get(user=request.user, blog=blog)
-            like.delete()
+        deleted, _ = Like.objects.filter(user=request.user, blog=blog).delete()
+        if deleted:
             return Response({'detail': 'Unliked'}, status=status.HTTP_200_OK)
-        except Like.DoesNotExist:
-            return Response({'detail': 'You have not liked this blog'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'You have not liked this blog'}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated], url_path='comments')
     def add_comment(self, request, pk=None):
