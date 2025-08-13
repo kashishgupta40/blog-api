@@ -33,8 +33,7 @@ It also includes Swagger UI integration for easy API testing.
 - Django
 - Django REST Framework
 - drf-yasg
-- dj-rest-auth
-- django-allauth
+
 
 ---
 
