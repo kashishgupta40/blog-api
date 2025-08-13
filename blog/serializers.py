@@ -74,5 +74,7 @@ class BlogSerializer(serializers.ModelSerializer):
         )
 
     def get_latest_comments(self, obj):
-        comments = obj.comments.order_by('-created_at')[:5]
-        return CommentSerializer(comments, many=True).data
+    comments = obj.comments.order_by('-created_at')[:5]
+    if comments.exists():
+      return CommentSerializer(comments, many=True).data
+    return []
